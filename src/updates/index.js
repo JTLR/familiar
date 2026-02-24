@@ -47,7 +47,7 @@ const shouldEnableAutoUpdates = ({ isE2E, isCI }) => {
     return false;
   }
 
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin' && process.platform !== 'win32') {
     return false;
   }
 

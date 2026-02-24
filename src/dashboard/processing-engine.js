@@ -112,6 +112,18 @@
       }
     }
 
+    // On non-macOS platforms, "Local" uses Windows OCR instead of Apple Vision.
+    // Update the panel description once at init so the user sees the right label.
+    if (typeof window !== 'undefined' && window.familiar?.platform !== 'darwin') {
+      for (const root of processingEngineRoots) {
+        const localPanel = root.querySelector?.('[data-processing-engine-panel="apple_vision_ocr"]')
+        const descEl = localPanel?.querySelector?.('p')
+        if (descEl) {
+          descEl.textContent = 'Windows OCR. Local only. No API key required.'
+        }
+      }
+    }
+
     updateProcessingEngineUI()
 
     return {

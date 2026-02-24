@@ -12,7 +12,40 @@ const getElectronNativeImage = () => {
     return electron && electron.nativeImage ? electron.nativeImage : null;
 };
 
-const encodeSvgDataUrl = (svg) => `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+// Build a tiny 12x12 raw RGBA bitmap of a filled circle.
+// Electron's nativeImage.createFromDataURL does not support SVG on Windows,
+// so we generate raw pixel data and pass it to nativeImage.createFromBitmap.
+function buildCircleBitmap({ size = 12, radius = 4, r, g, b }) {
+    const pixels = Buffer.alloc(size * size * 4, 0);
+    const cx = size / 2;
+    const cy = size / 2;
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const dx = x + 0.5 - cx;
+            const dy = y + 0.5 - cy;
+            if (dx * dx + dy * dy <= radius * radius) {
+                const offset = (y * size + x) * 4;
+                pixels[offset] = r;
+                pixels[offset + 1] = g;
+                pixels[offset + 2] = b;
+                pixels[offset + 3] = 255;
+            }
+        }
+    }
+    return { pixels, size };
+}
+
+function parseHexColor(hex) {
+    const match = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+    if (!match) {
+        return null;
+    }
+    return {
+        r: parseInt(match[1], 16),
+        g: parseInt(match[2], 16),
+        b: parseInt(match[3], 16),
+    };
+}
 
 function createRecordingIndicatorIconFactory({
     nativeImage = getElectronNativeImage(),
@@ -21,7 +54,7 @@ function createRecordingIndicatorIconFactory({
     const cache = new Map();
 
     return ({ colorHex } = {}) => {
-        if (!nativeImage || typeof nativeImage.createFromDataURL !== 'function') {
+        if (!nativeImage || typeof nativeImage.createFromBitmap !== 'function') {
             return null;
         }
         if (typeof colorHex !== 'string' || colorHex.length === 0) {
@@ -31,18 +64,21 @@ function createRecordingIndicatorIconFactory({
             return cache.get(colorHex);
         }
 
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"><circle cx="6" cy="6" r="4" fill="${colorHex}"/></svg>`;
-        const icon = nativeImage.createFromDataURL(encodeSvgDataUrl(svg));
+        const color = parseHexColor(colorHex);
+        if (!color) {
+            logger.warn('Tray recording indicator: invalid color', { colorHex });
+            return null;
+        }
+
+        const { pixels, size } = buildCircleBitmap({ size: 12, radius: 4, ...color });
+        const icon = nativeImage.createFromBitmap(pixels, { width: size, height: size });
         if (!icon || (typeof icon.isEmpty === 'function' && icon.isEmpty())) {
             logger.warn('Tray recording indicator icon creation failed', { colorHex });
             return null;
         }
 
-        const sizedIcon = typeof icon.resize === 'function'
-            ? icon.resize({ width: 12, height: 12 })
-            : icon;
-        cache.set(colorHex, sizedIcon);
-        return sizedIcon;
+        cache.set(colorHex, icon);
+        return icon;
     };
 }
 

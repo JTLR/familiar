@@ -34,6 +34,11 @@ function getScreenRecordingPermissionStatus() {
     return e2ePermissionStatus;
   }
 
+  // Windows has no per-app screen recording permission — capture is always allowed.
+  if (process.platform === 'win32') {
+    return 'granted';
+  }
+
   if (process.platform !== 'darwin') {
     return 'unavailable';
   }
@@ -56,6 +61,15 @@ async function requestScreenRecordingPermission() {
       permissionStatus: e2ePermissionStatus,
       granted: e2ePermissionStatus === 'granted',
       message: e2ePermissionStatus === 'unavailable' ? 'Screen Recording permissions are not applicable on this platform.' : null
+    };
+  }
+
+  // Windows has no per-app screen recording permission — always granted.
+  if (process.platform === 'win32') {
+    return {
+      ok: true,
+      permissionStatus: 'granted',
+      granted: true
     };
   }
 
@@ -97,6 +111,11 @@ async function requestScreenRecordingPermission() {
 }
 
 async function openScreenRecordingSettings() {
+  // Windows has no equivalent screen recording permission panel.
+  if (process.platform === 'win32') {
+    return { ok: true };
+  }
+
   if (process.platform !== 'darwin') {
     return {
       ok: false,

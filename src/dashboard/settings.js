@@ -24,6 +24,12 @@
     const setAlwaysRecordWhenActiveValue = typeof options.setAlwaysRecordWhenActiveValue === 'function'
       ? options.setAlwaysRecordWhenActiveValue
       : () => {}
+    const setCaptureIntervalSeconds = typeof options.setCaptureIntervalSeconds === 'function'
+      ? options.setCaptureIntervalSeconds
+      : () => {}
+    const setLaunchAtLoginValue = typeof options.setLaunchAtLoginValue === 'function'
+      ? options.setLaunchAtLoginValue
+      : () => {}
     const setMessage = typeof options.setMessage === 'function' ? options.setMessage : () => {}
     const updateWizardUI = typeof options.updateWizardUI === 'function' ? options.updateWizardUI : () => {}
 
@@ -45,7 +51,13 @@
       stillsMarkdownExtractorStatuses = [],
       alwaysRecordWhenActiveInputs = [],
       alwaysRecordWhenActiveErrors = [],
-      alwaysRecordWhenActiveStatuses = []
+      alwaysRecordWhenActiveStatuses = [],
+      captureIntervalSelects = [],
+      captureIntervalErrors = [],
+      captureIntervalStatuses = [],
+      launchAtLoginInputs = [],
+      launchAtLoginErrors = [],
+      launchAtLoginStatuses = []
     } = elements
 
     const isReady = Boolean(familiar.pickContextFolder && familiar.saveSettings && familiar.getSettings)
@@ -174,6 +186,67 @@
       return false
     }
 
+    const saveCaptureIntervalSeconds = async (intervalSeconds) => {
+      if (!isReady) {
+        return false
+      }
+
+      setMessage(captureIntervalStatuses, 'Saving...')
+      setMessage(captureIntervalErrors, '')
+
+      const nextValue = Number(intervalSeconds)
+      if (!Number.isFinite(nextValue) || nextValue <= 0) {
+        setMessage(captureIntervalStatuses, '')
+        setMessage(captureIntervalErrors, 'Invalid interval value.')
+        return false
+      }
+
+      try {
+        const result = await familiar.saveSettings({ captureIntervalSeconds: nextValue })
+        if (result && result.ok) {
+          setMessage(captureIntervalStatuses, 'Saved.')
+          setCaptureIntervalSeconds(nextValue)
+          console.log('Capture interval saved', { intervalSeconds: nextValue })
+          return true
+        }
+        setMessage(captureIntervalStatuses, '')
+        setMessage(captureIntervalErrors, result?.message || 'Failed to save setting.')
+      } catch (error) {
+        console.error('Failed to save capture interval', error)
+        setMessage(captureIntervalStatuses, '')
+        setMessage(captureIntervalErrors, 'Failed to save setting.')
+      }
+
+      return false
+    }
+
+    const saveLaunchAtLogin = async (enabled) => {
+      if (!isReady) {
+        return false
+      }
+
+      setMessage(launchAtLoginStatuses, 'Saving...')
+      setMessage(launchAtLoginErrors, '')
+
+      try {
+        const result = await familiar.saveSettings({ launchAtLogin: enabled })
+        if (result && result.ok) {
+          setMessage(launchAtLoginStatuses, 'Saved.')
+          setLaunchAtLoginValue(enabled)
+          console.log('Launch at login saved', { enabled })
+          return true
+        }
+        setMessage(launchAtLoginStatuses, '')
+        setMessage(launchAtLoginErrors, result?.message || 'Failed to save setting.')
+      } catch (error) {
+        console.error('Failed to save launch at login setting', error)
+        setMessage(launchAtLoginStatuses, '')
+        setMessage(launchAtLoginErrors, 'Failed to save setting.')
+      }
+
+      return false
+    }
+
     const saveStillsMarkdownExtractorTypeSelection = async (extractorType) => {
       if (!isReady) {
         return false
@@ -214,6 +287,8 @@
         setLlmApiKeySaved(result.llmProviderApiKey || '')
         setStillsMarkdownExtractorType(result.stillsMarkdownExtractorType || 'apple_vision_ocr')
         setAlwaysRecordWhenActiveValue(result.alwaysRecordWhenActive === true)
+        setCaptureIntervalSeconds(result.captureIntervalSeconds)
+        setLaunchAtLoginValue(result.launchAtLogin === true)
         setSkillHarness(result?.skillInstaller?.harness || '')
         setMessage(contextFolderErrors, result.validationMessage || '')
         setMessage(contextFolderStatuses, '')
@@ -224,6 +299,8 @@
         setMessage(stillsMarkdownExtractorStatuses, '')
         setMessage(alwaysRecordWhenActiveErrors, '')
         setMessage(alwaysRecordWhenActiveStatuses, '')
+        setMessage(launchAtLoginErrors, '')
+        setMessage(launchAtLoginStatuses, '')
         setMessage(copyLogErrors, '')
         setMessage(copyLogStatuses, '')
         if (appVersionLabel) {
@@ -375,6 +452,34 @@
         if (!saved) {
           setAlwaysRecordWhenActiveValue(currentAlwaysRecordWhenActive)
         }
+      })
+    })
+
+    launchAtLoginInputs.forEach((input) => {
+      input.addEventListener('change', async (event) => {
+        const nextValue = Boolean(event.target.checked)
+        const { currentLaunchAtLogin } = getState()
+        if (nextValue === currentLaunchAtLogin) {
+          return
+        }
+        const saved = await saveLaunchAtLogin(nextValue)
+        if (!saved) {
+          setLaunchAtLoginValue(currentLaunchAtLogin)
+        }
+      })
+    })
+
+    captureIntervalSelects.forEach((select) => {
+      select.addEventListener('change', async () => {
+        setMessage(captureIntervalErrors, '')
+        setMessage(captureIntervalStatuses, '')
+        const nextValue = Number(select.value)
+        captureIntervalSelects.forEach((other) => {
+          if (other !== select && other.value !== select.value) {
+            other.value = select.value
+          }
+        })
+        await saveCaptureIntervalSeconds(nextValue)
       })
     })
 

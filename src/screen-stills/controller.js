@@ -356,11 +356,18 @@ function createScreenStillsController(options = {}) {
     }
   }
 
-  function updateSettings({ enabled, contextFolderPath } = {}) {
+  function updateSettings({ enabled, contextFolderPath, captureIntervalSeconds } = {}) {
     settings = {
       enabled: enabled === true,
       contextFolderPath: typeof contextFolderPath === 'string' ? contextFolderPath : ''
     };
+
+    // Update capture interval at runtime if provided.
+    if (Number.isFinite(captureIntervalSeconds) && captureIntervalSeconds > 0) {
+      if (recorder && typeof recorder.updateInterval === 'function') {
+        recorder.updateInterval(captureIntervalSeconds);
+      }
+    }
 
     if (!settings.enabled) {
       resetStartRetry();

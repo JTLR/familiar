@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('familiar', {
     const data = typeof payload === 'string' ? { contextFolderPath: payload } : payload
     return ipcRenderer.invoke('settings:save', data)
   },
+  getLaunchAtLoginStatus: () => ipcRenderer.invoke('settings:getLaunchAtLoginStatus'),
   installSkill: (payload) => ipcRenderer.invoke('skills:install', payload),
   getSkillInstallStatus: (payload) => ipcRenderer.invoke('skills:status', payload),
   checkForUpdates: (payload) => ipcRenderer.invoke('updates:check', payload),

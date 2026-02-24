@@ -8,6 +8,8 @@
     const llmKeyInputs = elements.llmKeyInputs || []
     const stillsMarkdownExtractorSelects = elements.stillsMarkdownExtractorSelects || []
     const alwaysRecordWhenActiveInputs = elements.alwaysRecordWhenActiveInputs || []
+    const captureIntervalSelects = elements.captureIntervalSelects || []
+    const launchAtLoginInputs = elements.launchAtLoginInputs || []
 
     const state = {
       currentContextFolderPath: '',
@@ -16,6 +18,8 @@
       pendingLlmApiKey: '',
       currentStillsMarkdownExtractorType: 'apple_vision_ocr',
       currentAlwaysRecordWhenActive: false,
+      currentCaptureIntervalSeconds: 15,
+      currentLaunchAtLogin: false,
       isLlmApiKeySaved: false,
       currentSkillHarness: '',
       isSkillInstalled: false
@@ -99,6 +103,26 @@
       updateWizardUI()
     }
 
+    function setCaptureIntervalSeconds(value) {
+      const nextValue = Number(value)
+      state.currentCaptureIntervalSeconds = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 15
+      const strValue = String(state.currentCaptureIntervalSeconds)
+      for (const select of captureIntervalSelects) {
+        if (select.value !== strValue) {
+          select.value = strValue
+        }
+      }
+    }
+
+    function setLaunchAtLoginValue(value) {
+      state.currentLaunchAtLogin = Boolean(value)
+      for (const input of launchAtLoginInputs) {
+        if (input.checked !== state.currentLaunchAtLogin) {
+          input.checked = state.currentLaunchAtLogin
+        }
+      }
+    }
+
     function setSkillHarness(value) {
       state.currentSkillHarness = value || ''
       updateWizardUI()
@@ -138,7 +162,9 @@
         currentLlmApiKey: state.currentLlmApiKey,
         pendingLlmApiKey: state.pendingLlmApiKey,
         currentStillsMarkdownExtractorType: state.currentStillsMarkdownExtractorType,
-        currentAlwaysRecordWhenActive: state.currentAlwaysRecordWhenActive
+        currentAlwaysRecordWhenActive: state.currentAlwaysRecordWhenActive,
+        currentCaptureIntervalSeconds: state.currentCaptureIntervalSeconds,
+        currentLaunchAtLogin: state.currentLaunchAtLogin
       }
     }
 
@@ -150,6 +176,8 @@
       setLlmApiKeySaved,
       setStillsMarkdownExtractorType,
       setAlwaysRecordWhenActiveValue,
+      setCaptureIntervalSeconds,
+      setLaunchAtLoginValue,
       setSkillHarness,
       setSkillInstalled,
       getWizardState,

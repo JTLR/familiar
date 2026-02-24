@@ -172,6 +172,12 @@ document.addEventListener('DOMContentLoaded', function onDOMContentLoaded() {
   const alwaysRecordWhenActiveInputs = selectAll('[data-setting="always-record-when-active"]')
   const alwaysRecordWhenActiveErrors = selectAll('[data-setting-error="always-record-when-active-error"]')
   const alwaysRecordWhenActiveStatuses = selectAll('[data-setting-status="always-record-when-active-status"]')
+  const captureIntervalSelects = selectAll('[data-setting="capture-interval"]')
+  const captureIntervalErrors = selectAll('[data-setting-error="capture-interval-error"]')
+  const captureIntervalStatuses = selectAll('[data-setting-status="capture-interval-status"]')
+  const launchAtLoginInputs = selectAll('[data-setting="launch-at-login"]')
+  const launchAtLoginErrors = selectAll('[data-setting-error="launch-at-login-error"]')
+  const launchAtLoginStatuses = selectAll('[data-setting-status="launch-at-login-status"]')
   const sidebarRecordingDot = document.getElementById('sidebar-recording-dot')
   const sidebarRecordingStatus = document.getElementById('sidebar-recording-status')
   const sidebarRecordingToggleTrack = document.getElementById('sidebar-recording-toggle-track')
@@ -217,7 +223,9 @@ document.addEventListener('DOMContentLoaded', function onDOMContentLoaded() {
       llmProviderSelects,
       llmKeyInputs,
       stillsMarkdownExtractorSelects,
-      alwaysRecordWhenActiveInputs
+      alwaysRecordWhenActiveInputs,
+      captureIntervalSelects,
+      launchAtLoginInputs
     },
     apis
   })
@@ -488,7 +496,13 @@ document.addEventListener('DOMContentLoaded', function onDOMContentLoaded() {
       stillsMarkdownExtractorStatuses,
       alwaysRecordWhenActiveInputs,
       alwaysRecordWhenActiveErrors,
-      alwaysRecordWhenActiveStatuses
+      alwaysRecordWhenActiveStatuses,
+      captureIntervalSelects,
+      captureIntervalErrors,
+      captureIntervalStatuses,
+      launchAtLoginInputs,
+      launchAtLoginErrors,
+      launchAtLoginStatuses
     },
     familiar,
     getState: state.getSettingsState,
@@ -499,6 +513,8 @@ document.addEventListener('DOMContentLoaded', function onDOMContentLoaded() {
     setLlmApiKeySaved: state.setLlmApiKeySaved,
     setStillsMarkdownExtractorType: state.setStillsMarkdownExtractorType,
     setAlwaysRecordWhenActiveValue: state.setAlwaysRecordWhenActiveValue,
+    setCaptureIntervalSeconds: state.setCaptureIntervalSeconds,
+    setLaunchAtLoginValue: state.setLaunchAtLoginValue,
     setMessage,
     updateWizardUI: state.updateWizardUI
   })

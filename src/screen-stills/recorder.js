@@ -6,10 +6,13 @@ const path = require('node:path');
 const { isScreenRecordingPermissionGranted } = require('../screen-capture/permissions');
 const { createSessionStore, recoverIncompleteSessions } = require('./session-store');
 const { createStillsQueue } = require('./stills-queue');
+const { getWindowMetadata } = require('../ocr/windows-foreground');
 
 const CAPTURE_CONFIG = Object.freeze({
   format: 'webp',
-  scale: 0.5,
+  // macOS Apple Vision OCR handles half-res fine; Windows OCR needs full resolution
+  // for reliable text extraction. Full-res also improves cloud LLM results.
+  scale: process.platform === 'darwin' ? 0.5 : 1.0,
   intervalSeconds: 4
 });
 
@@ -100,7 +103,7 @@ function resolveIntervalMs(options, logger) {
 
 function createRecorder(options = {}) {
   const logger = options.logger || console;
-  const intervalMs = resolveIntervalMs(options, logger);
+  let intervalMs = resolveIntervalMs(options, logger);
 
   let captureWindow = null;
   let windowReadyPromise = null;
@@ -657,10 +660,23 @@ function createRecorder(options = {}) {
         });
         if (queueStore) {
           try {
+            // Capture foreground window metadata at screenshot time.
+            // Runs async but we await it — the ~1s PowerShell overhead is fine
+            // since captureNext() is already async and runs on a 15s interval.
+            let windowMeta = { title: null, app: null };
+            if (process.platform === 'win32') {
+              try {
+                windowMeta = await getWindowMetadata({ logger });
+              } catch (metaError) {
+                logger.warn('Window metadata capture failed', { error: metaError?.message });
+              }
+            }
             queueStore.enqueueCapture({
               imagePath: filePath,
               sessionId: sessionStore.sessionId,
-              capturedAt: nextCapture.capturedAt
+              capturedAt: nextCapture.capturedAt,
+              windowTitle: windowMeta.title || null,
+              appName: windowMeta.app || null
             });
           } catch (error) {
             logger.error('Failed to enqueue still capture', { error, filePath });
@@ -853,10 +869,27 @@ function createRecorder(options = {}) {
     return recoverIncompleteSessions(contextFolderPath, logger);
   }
 
+  // Update the capture interval at runtime. Reschedules the loop if currently capturing.
+  function updateInterval(nextIntervalSeconds) {
+    if (!Number.isFinite(nextIntervalSeconds) || nextIntervalSeconds <= 0) {
+      return;
+    }
+    const nextIntervalMs = Math.round(nextIntervalSeconds * 1000);
+    if (nextIntervalMs === intervalMs) {
+      return;
+    }
+    intervalMs = nextIntervalMs;
+    if (captureTimer) {
+      scheduleCaptureLoop();
+    }
+    logger.log('Capture interval updated', { intervalSeconds: nextIntervalSeconds, intervalMs: nextIntervalMs });
+  }
+
   return {
     start,
     stop,
-    recover
+    recover,
+    updateInterval
   };
 }
 

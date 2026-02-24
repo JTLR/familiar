@@ -52,6 +52,8 @@ const saveSettings = (settings, options = {}) => {
     const hasUpdateLastCheckedAt = Object.prototype.hasOwnProperty.call(settings, 'updateLastCheckedAt');
     const hasAlwaysRecordWhenActive = Object.prototype.hasOwnProperty.call(settings, 'alwaysRecordWhenActive');
     const hasWizardCompleted = Object.prototype.hasOwnProperty.call(settings, 'wizardCompleted');
+    const hasCaptureIntervalSeconds = Object.prototype.hasOwnProperty.call(settings, 'captureIntervalSeconds');
+    const hasLaunchAtLogin = Object.prototype.hasOwnProperty.call(settings, 'launchAtLogin');
     const hasSkillInstaller = Object.prototype.hasOwnProperty.call(settings, 'skillInstaller');
     const existingStillsExtractor =
         existing && typeof existing.stills_markdown_extractor === 'object' ? existing.stills_markdown_extractor : {};
@@ -144,6 +146,22 @@ const saveSettings = (settings, options = {}) => {
         payload.wizardCompleted = settings.wizardCompleted === true;
     } else if (typeof existing.wizardCompleted === 'boolean') {
         payload.wizardCompleted = existing.wizardCompleted;
+    }
+
+    if (hasLaunchAtLogin) {
+        payload.launchAtLogin = settings.launchAtLogin === true;
+    } else if (typeof existing.launchAtLogin === 'boolean') {
+        payload.launchAtLogin = existing.launchAtLogin;
+    }
+
+    if (hasCaptureIntervalSeconds) {
+        const rawInterval = Number(settings.captureIntervalSeconds);
+        // Floor at 1s to prevent sub-second intervals from hammering the system.
+        if (Number.isFinite(rawInterval) && rawInterval >= 1) {
+            payload.captureIntervalSeconds = rawInterval;
+        }
+    } else if (typeof existing.captureIntervalSeconds === 'number') {
+        payload.captureIntervalSeconds = existing.captureIntervalSeconds;
     }
 
     if (hasSkillInstaller) {

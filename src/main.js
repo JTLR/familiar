@@ -60,13 +60,31 @@ const updateScreenCaptureFromSettings = () => {
         return;
     }
     const settings = loadSettings();
+    // Platform-aware default: 4s on macOS (free local OCR), 15s on Windows (cloud LLM cost).
+    const defaultInterval = process.platform === 'darwin' ? 4 : 15;
     const payload = {
         enabled: settings.alwaysRecordWhenActive === true,
-        contextFolderPath: typeof settings.contextFolderPath === 'string' ? settings.contextFolderPath : ''
+        contextFolderPath: typeof settings.contextFolderPath === 'string' ? settings.contextFolderPath : '',
+        captureIntervalSeconds: typeof settings.captureIntervalSeconds === 'number' && settings.captureIntervalSeconds > 0
+            ? settings.captureIntervalSeconds
+            : defaultInterval
     };
     if (screenStillsController) {
         screenStillsController.updateSettings(payload);
     }
+};
+
+// Applies the launchAtLogin setting to the OS login item registry.
+// Works on both macOS (Launch Services) and Windows (HKCU\...\Run registry key).
+// Only effective when the app is packaged; no-ops gracefully in dev mode.
+const applyLaunchAtLoginSetting = () => {
+    if (process.platform !== 'darwin' && process.platform !== 'win32') {
+        return;
+    }
+    const settings = loadSettings();
+    const openAtLogin = settings.launchAtLogin === true;
+    app.setLoginItemSettings({ openAtLogin, openAsHidden: true });
+    console.log('Launch at login applied', { openAtLogin });
 };
 
 const attemptScreenCaptureShutdown = (reason) => {
@@ -367,8 +385,13 @@ function createTray() {
     console.log('Tray created');
 }
 
-// Register all IPC handlers
-registerIpcHandlers({ onSettingsSaved: updateScreenCaptureFromSettings });
+// Register all IPC handlers.
+// When any setting is saved, re-apply both screen capture and login item state.
+const onSettingsSaved = () => {
+    updateScreenCaptureFromSettings();
+    applyLaunchAtLoginSetting();
+};
+registerIpcHandlers({ onSettingsSaved });
 
 ipcMain.handle('screenStills:getStatus', () => {
     if (!screenStillsController) {
@@ -421,6 +444,14 @@ ipcMain.handle('screenStills:simulateIdle', (_event, payload = {}) => {
     return { ok: true };
 });
 
+ipcMain.handle('settings:getLaunchAtLoginStatus', () => {
+    if (process.platform !== 'darwin' && process.platform !== 'win32') {
+        return { ok: true, supported: false, openAtLogin: false };
+    }
+    const loginSettings = app.getLoginItemSettings();
+    return { ok: true, supported: true, openAtLogin: loginSettings.openAtLogin === true };
+});
+
 ipcMain.handle('e2e:tray:getRecordingLabel', () => {
     if (!isE2E) {
         return { ok: false, message: 'Tray E2E action is only available in E2E mode.' };
@@ -445,15 +476,20 @@ ipcMain.handle('e2e:tray:clickRecordingAction', async () => {
 });
 
 app.whenReady().then(() => {
-    if (process.platform !== 'darwin' && !isE2E) {
-        console.error('Familiar desktop app is macOS-only right now.');
+    const SUPPORTED_PLATFORMS = ['darwin', 'win32'];
+    if (!SUPPORTED_PLATFORMS.includes(process.platform) && !isE2E) {
+        console.error(`Familiar desktop app does not support ${process.platform} yet.`);
         app.quit();
         return;
     }
 
-    if (process.platform === 'darwin') {
-        app.dock?.show();
-        app.setLoginItemSettings({ openAtLogin: true, openAsHidden: true });
+    if (SUPPORTED_PLATFORMS.includes(process.platform)) {
+        if (process.platform === 'darwin') {
+            app.dock?.show();
+        }
+
+        // Apply launch-at-login from persisted setting (default: off).
+        applyLaunchAtLoginSetting();
 
         createTray();
         presenceMonitor = createPresenceMonitor({ logger: console });
@@ -532,7 +568,8 @@ app.on('render-process-gone', (_event, details) => {
 });
 
 app.on('window-all-closed', (event) => {
-    if (process.platform === 'darwin') {
+    // On macOS and Windows the app lives in the tray — don't quit when all windows close.
+    if (process.platform === 'darwin' || process.platform === 'win32') {
         if (isQuitting || app.isQuittingForUpdate) {
             return;
         }

@@ -130,10 +130,15 @@ function handleGetSettings() {
             if (typeof type === 'string' && type.trim()) {
                 return type;
             }
-            return 'apple_vision_ocr';
+            return process.platform === 'darwin' ? 'apple_vision_ocr' : 'llm';
         })();
         const alwaysRecordWhenActive = settings.alwaysRecordWhenActive === true;
+        // Platform-aware default: 4s on macOS (free local OCR), 15s on Windows (cloud LLM cost).
+        const captureIntervalSeconds = typeof settings.captureIntervalSeconds === 'number' && settings.captureIntervalSeconds > 0
+            ? settings.captureIntervalSeconds
+            : (process.platform === 'darwin' ? 4 : 15);
         const wizardCompleted = settings.wizardCompleted === true;
+        const launchAtLogin = settings.launchAtLogin === true;
         const skillInstallerHarness = typeof settings?.skillInstaller?.harness === 'string' ? settings.skillInstaller.harness : '';
         const skillInstallerInstallPath =
             typeof settings?.skillInstaller?.installPath === 'string' ? settings.skillInstaller.installPath : '';
@@ -157,7 +162,9 @@ function handleGetSettings() {
             llmProviderApiKey,
             stillsMarkdownExtractorType,
             alwaysRecordWhenActive,
+            captureIntervalSeconds,
             wizardCompleted,
+            launchAtLogin,
             skillInstaller: {
                 harness: skillInstallerHarness,
                 installPath: skillInstallerInstallPath,
@@ -171,9 +178,11 @@ function handleGetSettings() {
             validationMessage: 'Failed to load settings.',
             llmProviderName: '',
             llmProviderApiKey: '',
-            stillsMarkdownExtractorType: 'apple_vision_ocr',
+            stillsMarkdownExtractorType: process.platform === 'darwin' ? 'apple_vision_ocr' : 'llm',
             alwaysRecordWhenActive: false,
+            captureIntervalSeconds: process.platform === 'darwin' ? 4 : 15,
             wizardCompleted: false,
+            launchAtLogin: false,
             skillInstaller: { harness: '', installPath: '' },
             appVersion
         };
@@ -186,7 +195,9 @@ function handleSaveSettings(_event, payload) {
     const hasLlmProviderName = Object.prototype.hasOwnProperty.call(payload || {}, 'llmProviderName');
     const hasStillsMarkdownExtractorType = Object.prototype.hasOwnProperty.call(payload || {}, 'stillsMarkdownExtractorType');
     const hasAlwaysRecordWhenActive = Object.prototype.hasOwnProperty.call(payload || {}, 'alwaysRecordWhenActive');
+    const hasCaptureIntervalSeconds = Object.prototype.hasOwnProperty.call(payload || {}, 'captureIntervalSeconds');
     const hasWizardCompleted = Object.prototype.hasOwnProperty.call(payload || {}, 'wizardCompleted');
+    const hasLaunchAtLogin = Object.prototype.hasOwnProperty.call(payload || {}, 'launchAtLogin');
     const hasSkillInstaller = Object.prototype.hasOwnProperty.call(payload || {}, 'skillInstaller');
     const settingsPayload = {};
 
@@ -196,7 +207,9 @@ function handleSaveSettings(_event, payload) {
         !hasLlmProviderName &&
         !hasStillsMarkdownExtractorType &&
         !hasAlwaysRecordWhenActive &&
+        !hasCaptureIntervalSeconds &&
         !hasWizardCompleted &&
+        !hasLaunchAtLogin &&
         !hasSkillInstaller
     ) {
         return { ok: false, message: 'No settings provided.' };
@@ -240,8 +253,20 @@ function handleSaveSettings(_event, payload) {
         settingsPayload.alwaysRecordWhenActive = nextValue;
     }
 
+    if (hasCaptureIntervalSeconds) {
+        const rawInterval = Number(payload.captureIntervalSeconds);
+        // Floor at 1s to prevent accidental system hammering via crafted IPC.
+        if (Number.isFinite(rawInterval) && rawInterval >= 1) {
+            settingsPayload.captureIntervalSeconds = rawInterval;
+        }
+    }
+
     if (hasWizardCompleted) {
         settingsPayload.wizardCompleted = payload.wizardCompleted === true;
+    }
+
+    if (hasLaunchAtLogin) {
+        settingsPayload.launchAtLogin = payload.launchAtLogin === true;
     }
 
     if (hasSkillInstaller) {

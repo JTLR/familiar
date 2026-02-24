@@ -1,22 +1,23 @@
 {
   "name": "familiar-desktopapp",
   "version": "0.0.38",
-  "description": "Familiar menu bar app shell (macOS)",
+  "description": "Familiar desktop app shell (macOS & Windows)",
   "main": "src/main.js",
   "scripts": {
     "clean": "rimraf dist",
-    "build:apple-vision-ocr": "bash scripts/build-apple-vision-ocr.sh",
+    "build:apple-vision-ocr": "node scripts/build-apple-vision-ocr.js",
     "prestart": "npm run build:apple-vision-ocr",
     "dist:mac": "npm run clean && npm run build:apple-vision-ocr && npm run css:build && electron-builder --mac --arm64 --x64",
     "dist:mac:arm64": "npm run clean && npm run build:apple-vision-ocr && npm run css:build && electron-builder --mac --arm64",
     "dist:mac:x64": "npm run clean && npm run build:apple-vision-ocr && npm run css:build && electron-builder --mac --x64",
+    "dist:win": "npm run clean && npm run css:build && electron-builder --win",
     "css": "tailwindcss -i ./src/dashboard/input.css -o ./src/dashboard/styles.css --watch",
     "css:build": "tailwindcss -i ./src/dashboard/input.css -o ./src/dashboard/styles.css --minify",
     "start": "npm run rebuild:electron && npm run css:build && electron .",
     "predev": "npm run build:apple-vision-ocr",
     "dev": "npm run rebuild:electron && tailwindcss -i ./src/dashboard/input.css -o ./src/dashboard/styles.css --watch & electron .",
     "rebuild:node": "npm rebuild better-sqlite3",
-    "rebuild:electron": "npm_config_runtime=electron npm_config_target=40.0.0 npm_config_disturl=https://electronjs.org/headers npm rebuild better-sqlite3 --build-from-source",
+    "rebuild:electron": "node scripts/rebuild-for-electron.js",
     "test": "npm run rebuild:node && find test -name \"*.test.js\" -not -path \"*/e2e/*\" -not -path \"*/modelProviderTests/*\" -print0 | xargs -0 node --test",
     "test:unit:timed": "npm run rebuild:node && node scripts/run-unit-tests-with-timeout.js",
     "test:modelProviderTests": "npm run rebuild:node && find test/modelProviderTests -name \"*.test.js\" -print0 | xargs -0 node --test",
@@ -28,7 +29,9 @@
   "keywords": [
     "Electron",
     "menu bar",
+    "system tray",
     "macOS",
+    "Windows",
     "Familiar"
   ],
   "build": {
@@ -50,13 +53,13 @@
       "build/**/*",
       "package.json"
     ],
-    "extraResources": [
-      {
-        "from": "scripts/bin/apple-vision-ocr",
-        "to": "apple-vision-ocr"
-      }
-    ],
     "mac": {
+      "extraResources": [
+        {
+          "from": "scripts/bin/apple-vision-ocr",
+          "to": "apple-vision-ocr"
+        }
+      ],
       "target": [
         "dmg",
         "zip"
@@ -86,6 +89,18 @@
           "path": "/Applications"
         }
       ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     }
   },
   "author": "Familiar",

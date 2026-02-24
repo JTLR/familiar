@@ -9,6 +9,7 @@ const {
   runAppleVisionOcrBinary,
   buildMarkdownLayoutFromOcr
 } = require('../ocr/apple-vision-ocr')
+const { createWindowsOcrExtractor } = require('./windows-ocr-extractor')
 
 const PROMPT_PATH = path.join(__dirname, 'stills-markdown-prompt.md')
 const PROMPT_TEMPLATE = (() => {
@@ -33,8 +34,8 @@ const normalizeExtractorType = (settings) => {
     return 'llm'
   }
 
-  // Default to local when nothing is configured yet.
-  return 'apple_vision_ocr'
+  // Default to Apple Vision OCR on macOS; LLM on other platforms where no local OCR is available.
+  return process.platform === 'darwin' ? 'apple_vision_ocr' : 'llm'
 }
 
 const createLlmVisionExtractor = ({
@@ -229,6 +230,10 @@ const createAppleVisionOcrExtractor = ({
 const createStillsMarkdownExtractor = (options = {}) => {
   const type = normalizeExtractorType(options?.settings)
   if (type === 'apple_vision_ocr') {
+    // Apple Vision is macOS-only. On Windows, use the native Windows.Media.Ocr API.
+    if (process.platform !== 'darwin') {
+      return createWindowsOcrExtractor(options)
+    }
     return createAppleVisionOcrExtractor(options)
   }
   return createLlmVisionExtractor(options)

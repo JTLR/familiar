@@ -42,6 +42,21 @@ const createStillsQueue = ({ contextFolderPath, logger = console } = {}) => {
       ON stills_queue (status, captured_at);
   `)
 
+  // Migration-safe: add window metadata columns if they don't exist yet.
+  // ALTER TABLE ADD COLUMN is a no-op if the column already exists in SQLite 3.35+,
+  // but older versions throw. Catch and ignore to be safe.
+  const migrationColumns = [
+    { name: 'window_title', type: 'TEXT' },
+    { name: 'app_name', type: 'TEXT' }
+  ]
+  for (const col of migrationColumns) {
+    try {
+      db.exec(`ALTER TABLE stills_queue ADD COLUMN ${col.name} ${col.type}`)
+    } catch (_) {
+      // Column already exists — expected after first run.
+    }
+  }
+
   logger.log('Stills queue initialized', { dbPath })
 
   const insertStmt = db.prepare(`
@@ -54,13 +69,15 @@ const createStillsQueue = ({ contextFolderPath, logger = console } = {}) => {
       model,
       markdown_path,
       last_error,
+      window_title,
+      app_name,
       created_at,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
 
   const pendingStmt = db.prepare(`
-    SELECT id, image_path, session_id, captured_at
+    SELECT id, image_path, session_id, captured_at, window_title, app_name
     FROM stills_queue
     WHERE status = ?
     ORDER BY captured_at ASC
@@ -114,7 +131,7 @@ const createStillsQueue = ({ contextFolderPath, logger = console } = {}) => {
     WHERE status = ? AND updated_at < ?
   `)
 
-  const enqueueCapture = ({ imagePath, sessionId, capturedAt, provider, model } = {}) => {
+  const enqueueCapture = ({ imagePath, sessionId, capturedAt, provider, model, windowTitle, appName } = {}) => {
     if (!imagePath) {
       throw new Error('imagePath is required to enqueue still capture.')
     }
@@ -135,6 +152,8 @@ const createStillsQueue = ({ contextFolderPath, logger = console } = {}) => {
       model || null,
       null,
       null,
+      windowTitle || null,
+      appName || null,
       now,
       now
     )

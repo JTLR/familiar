@@ -135,7 +135,7 @@
           </nav>
 
           <div class="px-3 mt-auto">
-            <p class="text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed">Open this window anytime from the menu bar icon or Dock icon.</p>
+            <p class="text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed" data-platform-text="open-hint">Open this window anytime from the system icon.</p>
           </div>
         </aside>
 
@@ -245,7 +245,8 @@
                       data-action="copy-debug-log"
                       type="button"
                       class="px-3 py-1.5 text-xs font-medium bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Copies ~/.familiar/logs/familiar.log to your clipboard"
+                      data-platform-title="copy-log"
+                      title="Copies the debug log to your clipboard"
                     >Copy Debug Log</button>
                   </div>
                 </div>
@@ -329,8 +330,8 @@
                   </div>
 
                   <div class="space-y-2 pt-1 hidden" data-processing-engine-panel="apple_vision_ocr">
-                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
-                      Apple's OCR. Local only. No API key required.
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400" data-platform-text="local-ocr-label">
+                      Local OCR. No API key required.
                     </p>
                   </div>
 	              </section>
@@ -356,7 +357,7 @@
                 <div class="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800 space-y-5">
                   <div class="space-y-1">
                     <h3 class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Permissions</h3>
-                    <p class="text-xs text-zinc-500 dark:text-zinc-400">Capturing stills while active requires Screen Recording permission.</p>
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400" data-platform-text="permissions-hint">Capturing stills while active requires Screen Recording permission.</p>
                   </div>
                   <section class="space-y-2">
                     <div class="flex flex-wrap items-center gap-2">
@@ -476,7 +477,7 @@
               <div data-wizard-step="2" class="max-w-[360px] mx-auto space-y-5 hidden">
                 <div class="text-center space-y-1">
                   <h3 class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Enable capturing</h3>
-                  <p class="text-xs text-zinc-500 dark:text-zinc-400">Captures a still while you are active, and stops when idle. Requires Screen Recording permission.</p>
+                  <p class="text-xs text-zinc-500 dark:text-zinc-400" data-platform-text="wizard-permissions-hint">Captures a still while you are active, and stops when idle.</p>
                 </div>
                 <div data-component-source="permissions" class="space-y-5">
                   <section class="space-y-2">

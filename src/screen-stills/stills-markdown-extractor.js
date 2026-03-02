@@ -231,10 +231,16 @@ const createStillsMarkdownExtractor = (options = {}) => {
   const type = normalizeExtractorType(options?.settings)
   if (type === 'apple_vision_ocr') {
     // Apple Vision is macOS-only. On Windows, use the native Windows.Media.Ocr API.
-    if (process.platform !== 'darwin') {
+    // Other platforms (Linux) fall through to the cloud LLM extractor.
+    if (process.platform === 'win32') {
       return createWindowsOcrExtractor(options)
     }
-    return createAppleVisionOcrExtractor(options)
+    if (process.platform === 'darwin') {
+      return createAppleVisionOcrExtractor(options)
+    }
+  }
+  if (type === 'windows_ocr' && process.platform === 'win32') {
+    return createWindowsOcrExtractor(options)
   }
   return createLlmVisionExtractor(options)
 }

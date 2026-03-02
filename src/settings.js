@@ -81,7 +81,9 @@ const saveSettings = (settings, options = {}) => {
         const rawType =
             typeof settings.stillsMarkdownExtractorType === 'string' ? settings.stillsMarkdownExtractorType : '';
         const normalized = rawType.trim().toLowerCase();
-        const nextType = normalized === 'apple_vision_ocr' ? 'apple_vision_ocr' : 'llm';
+        // Recognise all three extractor types: apple_vision_ocr (macOS), windows_ocr (Windows), llm (cloud).
+        const nextType = (normalized === 'apple_vision_ocr' || normalized === 'windows_ocr')
+            ? normalized : 'llm';
         payload.stills_markdown_extractor = { ...existingStillsExtractor, type: nextType };
         if (nextType === 'apple_vision_ocr') {
             if (typeof payload.stills_markdown_extractor.level !== 'string') {

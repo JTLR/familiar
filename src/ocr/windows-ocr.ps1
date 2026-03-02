@@ -147,6 +147,13 @@ if ($null -eq $ocrEngine) {
 $results = @{}
 
 foreach ($imagePath in $ImagePaths) {
+    # Initialise per-iteration variables to prevent stale values from a previous
+    # iteration leaking into the catch block (PowerShell uses function scope, not block scope).
+    $isPreprocessed = $false
+    $ocrInputPath = $null
+    $bitmap = $null
+    $fileStream = $null
+
     try {
         $fullPath = (Resolve-Path $imagePath -ErrorAction Stop).Path
 
@@ -170,22 +177,23 @@ foreach ($imagePath in $ImagePaths) {
         # Extract line text and word-level bounding boxes.
         # Strip ASCII control characters (0x00-0x1F) that the OCR engine occasionally
         # returns -- these break ConvertTo-Json and cause Node.js JSON.parse() to fail.
-        $lineTexts = @()
-        $wordData = @()
+        # Use typed lists instead of += on arrays to avoid O(n^2) array reallocation.
+        $lineTexts = [System.Collections.Generic.List[string]]::new()
+        $wordData  = [System.Collections.Generic.List[hashtable]]::new()
         foreach ($line in $ocrResult.Lines) {
-            $lineTexts += ($line.Text -replace '[\x00-\x1f]', '')
+            $lineTexts.Add(($line.Text -replace '[\x00-\x1f]', ''))
 
             # Extract word-level bounding box data for layout inference.
             # Each OcrWord has .Text and .BoundingRect (x, y, width, height).
             foreach ($word in $line.Words) {
                 $rect = $word.BoundingRect
-                $wordData += @{
+                $wordData.Add(@{
                     text = ($word.Text -replace '[\x00-\x1f]', '')
                     x    = [int]$rect.X
                     y    = [int]$rect.Y
                     w    = [int]$rect.Width
                     h    = [int]$rect.Height
-                }
+                })
             }
         }
 
@@ -198,8 +206,10 @@ foreach ($imagePath in $ImagePaths) {
             words = $wordData
         }
 
-        # Clean up streams to avoid file locks.
-        $fileStream.Dispose()
+        # Clean up native WinRT objects and streams to avoid memory accumulation and file locks.
+        # SoftwareBitmap holds pixel data in memory — must be disposed after each image.
+        if ($bitmap)     { $bitmap.Dispose() }
+        if ($fileStream) { $fileStream.Dispose() }
 
         # Clean up preprocessed temp file if we created one.
         if ($isPreprocessed -and (Test-Path $ocrInputPath)) {
@@ -208,6 +218,9 @@ foreach ($imagePath in $ImagePaths) {
     }
     catch {
         $results[$imagePath] = @{ error = $_.Exception.Message }
+        # Dispose any native objects that were created before the error.
+        if ($bitmap)     { try { $bitmap.Dispose() } catch {} }
+        if ($fileStream) { try { $fileStream.Dispose() } catch {} }
         # Ensure temp file cleanup on error too.
         if ($isPreprocessed -and $ocrInputPath -and (Test-Path $ocrInputPath)) {
             Remove-Item $ocrInputPath -Force -ErrorAction SilentlyContinue

@@ -60,8 +60,8 @@ const updateScreenCaptureFromSettings = () => {
         return;
     }
     const settings = loadSettings();
-    // Platform-aware default: 4s on macOS (free local OCR), 15s on Windows (cloud LLM cost).
-    const defaultInterval = process.platform === 'darwin' ? 4 : 15;
+    const { DEFAULT_CAPTURE_INTERVAL_SECONDS } = require('./const');
+    const defaultInterval = DEFAULT_CAPTURE_INTERVAL_SECONDS;
     const payload = {
         enabled: settings.alwaysRecordWhenActive === true,
         contextFolderPath: typeof settings.contextFolderPath === 'string' ? settings.contextFolderPath : '',

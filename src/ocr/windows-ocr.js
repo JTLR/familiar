@@ -13,8 +13,13 @@ const { escapeForQuotedBullet } = require('./apple-vision-ocr')
 
 const execFileAsync = promisify(execFile)
 
-// Path to the PowerShell OCR helper script, resolved relative to this module.
-const SCRIPT_PATH = path.join(__dirname, 'windows-ocr.ps1')
+// In production builds, the .ps1 is unpacked via extraResources to
+// resources/windows-ocr.ps1 (outside the .asar archive, where
+// PowerShell can actually read it). In dev, use the source tree path.
+const isPackaged = __dirname.includes('.asar')
+const SCRIPT_PATH = isPackaged
+  ? path.join(process.resourcesPath, 'windows-ocr.ps1')
+  : path.join(__dirname, 'windows-ocr.ps1')
 
 /**
  * Runs Windows OCR on a batch of images in a single PowerShell invocation.
@@ -45,8 +50,12 @@ const runWindowsOcrBatch = async ({ imagePaths, preprocess = true, logger = cons
 
   let stdout
   try {
+    // Base 30s for PowerShell cold start + 5s per image for OCR processing.
+    // Prevents a hung PowerShell process from blocking the capture pipeline.
+    const timeoutMs = 30000 + (imagePaths.length * 5000)
     const result = await execFileAsync('powershell.exe', args, {
       maxBuffer: 1024 * 1024 * 50,
+      timeout: timeoutMs,
       windowsHide: true
     })
     stdout = result.stdout

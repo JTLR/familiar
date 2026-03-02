@@ -12,7 +12,13 @@ const { promisify } = require('node:util')
 
 const execFileAsync = promisify(execFile)
 
-const SCRIPT_PATH = path.join(__dirname, 'windows-foreground.ps1')
+// In production builds, the .ps1 is unpacked via extraResources to
+// resources/windows-foreground.ps1 (outside the .asar archive, where
+// PowerShell can actually read it). In dev, use the source tree path.
+const isPackaged = __dirname.includes('.asar')
+const SCRIPT_PATH = isPackaged
+  ? path.join(process.resourcesPath, 'windows-foreground.ps1')
+  : path.join(__dirname, 'windows-foreground.ps1')
 
 // Timeout for the PowerShell process. The script is lightweight but PowerShell
 // cold start can take ~1s. 5s is generous to avoid false failures.

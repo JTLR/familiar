@@ -21,9 +21,12 @@ contextBridge.exposeInMainWorld('familiar', {
   startScreenStills: () => ipcRenderer.invoke('screenStills:start'),
   pauseScreenStills: () => ipcRenderer.invoke('screenStills:pause'),
   stopScreenStills: () => ipcRenderer.invoke('screenStills:stop'),
-  simulateStillsIdle: (payload) => ipcRenderer.invoke('screenStills:simulateIdle', payload),
-  getTrayRecordingLabelForE2E: () => ipcRenderer.invoke('e2e:tray:getRecordingLabel'),
-  clickTrayRecordingActionForE2E: () => ipcRenderer.invoke('e2e:tray:clickRecordingAction'),
+  // E2E/test-only IPC channels — only exposed when running under the test harness.
+  ...(process.env.FAMILIAR_E2E === '1' ? {
+    simulateStillsIdle: (payload) => ipcRenderer.invoke('screenStills:simulateIdle', payload),
+    getTrayRecordingLabelForE2E: () => ipcRenderer.invoke('e2e:tray:getRecordingLabel'),
+    clickTrayRecordingActionForE2E: () => ipcRenderer.invoke('e2e:tray:clickRecordingAction'),
+  } : {}),
   onAlwaysRecordWhenActiveChanged: (handler) => {
     const listener = (_event, payload) => handler(payload)
     ipcRenderer.on('settings:alwaysRecordWhenActiveChanged', listener)

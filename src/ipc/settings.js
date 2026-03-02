@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { loadSettings, saveSettings, validateContextFolderPath } = require('../settings');
+const { DEFAULT_CAPTURE_INTERVAL_SECONDS } = require('../const');
 const {
   getScreenRecordingPermissionStatus,
   openScreenRecordingSettings
@@ -130,13 +131,14 @@ function handleGetSettings() {
             if (typeof type === 'string' && type.trim()) {
                 return type;
             }
-            return process.platform === 'darwin' ? 'apple_vision_ocr' : 'llm';
+            // Platform-aware default: native OCR on macOS and Windows, cloud LLM elsewhere.
+            return process.platform === 'darwin' ? 'apple_vision_ocr'
+                : process.platform === 'win32' ? 'windows_ocr' : 'llm';
         })();
         const alwaysRecordWhenActive = settings.alwaysRecordWhenActive === true;
-        // Platform-aware default: 4s on macOS (free local OCR), 15s on Windows (cloud LLM cost).
         const captureIntervalSeconds = typeof settings.captureIntervalSeconds === 'number' && settings.captureIntervalSeconds > 0
             ? settings.captureIntervalSeconds
-            : (process.platform === 'darwin' ? 4 : 15);
+            : DEFAULT_CAPTURE_INTERVAL_SECONDS;
         const wizardCompleted = settings.wizardCompleted === true;
         const launchAtLogin = settings.launchAtLogin === true;
         const skillInstallerHarness = typeof settings?.skillInstaller?.harness === 'string' ? settings.skillInstaller.harness : '';
@@ -178,9 +180,10 @@ function handleGetSettings() {
             validationMessage: 'Failed to load settings.',
             llmProviderName: '',
             llmProviderApiKey: '',
-            stillsMarkdownExtractorType: process.platform === 'darwin' ? 'apple_vision_ocr' : 'llm',
+            stillsMarkdownExtractorType: process.platform === 'darwin' ? 'apple_vision_ocr'
+                : process.platform === 'win32' ? 'windows_ocr' : 'llm',
             alwaysRecordWhenActive: false,
-            captureIntervalSeconds: process.platform === 'darwin' ? 4 : 15,
+            captureIntervalSeconds: DEFAULT_CAPTURE_INTERVAL_SECONDS,
             wizardCompleted: false,
             launchAtLogin: false,
             skillInstaller: { harness: '', installPath: '' },
@@ -245,7 +248,9 @@ function handleSaveSettings(_event, payload) {
     if (hasStillsMarkdownExtractorType) {
         const raw = typeof payload.stillsMarkdownExtractorType === 'string' ? payload.stillsMarkdownExtractorType : '';
         const normalized = raw.trim().toLowerCase();
-        settingsPayload.stillsMarkdownExtractorType = normalized === 'apple_vision_ocr' ? 'apple_vision_ocr' : 'llm';
+        // Recognise all three extractor types: apple_vision_ocr (macOS), windows_ocr (Windows), llm (cloud).
+        settingsPayload.stillsMarkdownExtractorType =
+            (normalized === 'apple_vision_ocr' || normalized === 'windows_ocr') ? normalized : 'llm';
     }
 
     if (hasAlwaysRecordWhenActive) {

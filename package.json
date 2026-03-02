@@ -91,6 +91,16 @@
       ]
     },
     "win": {
+      "extraResources": [
+        {
+          "from": "src/ocr/windows-foreground.ps1",
+          "to": "windows-foreground.ps1"
+        },
+        {
+          "from": "src/ocr/windows-ocr.ps1",
+          "to": "windows-ocr.ps1"
+        }
+      ],
       "target": [
         "nsis"
       ],

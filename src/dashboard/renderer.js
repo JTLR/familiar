@@ -531,6 +531,43 @@ document.addEventListener('DOMContentLoaded', function onDOMContentLoaded() {
     return
   }
 
+  // Set platform-specific UI text. HTML uses neutral/macOS defaults;
+  // this swaps text for Windows where concepts differ (e.g. no Screen Recording permission).
+  function applyPlatformText() {
+    const isWindows = familiar.platform === 'win32'
+    const isMac = familiar.platform === 'darwin'
+
+    const textMap = {
+      'open-hint': isMac
+        ? 'Open this window anytime from the menu bar icon or Dock icon.'
+        : 'Open this window anytime from the system tray icon.',
+      'local-ocr-label': isWindows
+        ? 'Windows OCR. Local only. No API key required.'
+        : "Apple's OCR. Local only. No API key required.",
+      'permissions-hint': isWindows
+        ? 'Capturing stills while active.'
+        : 'Capturing stills while active requires Screen Recording permission.',
+      'wizard-permissions-hint': isWindows
+        ? 'Captures a still while you are active, and stops when idle.'
+        : 'Captures a still while you are active, and stops when idle. Requires Screen Recording permission.'
+    }
+
+    for (const [key, text] of Object.entries(textMap)) {
+      for (const el of selectAll(`[data-platform-text="${key}"]`)) {
+        el.textContent = text
+      }
+    }
+
+    // Hide the macOS-only permission check buttons on Windows.
+    if (isWindows) {
+      for (const el of selectAll('[data-action="check-permissions"], [data-action="open-screen-recording-settings"]')) {
+        el.classList.add('hidden')
+      }
+    }
+  }
+
+  applyPlatformText()
+
   async function initialize() {
     const settingsResult = await apis.settingsApi.loadSettings()
     setWizardCompletionState(settingsResult?.wizardCompleted === true)

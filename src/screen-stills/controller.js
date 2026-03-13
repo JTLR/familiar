@@ -32,10 +32,10 @@ function createScreenStillsController(options = {}) {
     createPresenceMonitor({ idleThresholdSeconds, logger });
   const recorder = options.recorder || createRecorder({ logger });
   const markdownWorker = options.markdownWorker || createStillsMarkdownWorker({ logger });
-  const clipboardMirror = options.clipboardMirror
-    || ((process.versions && process.versions.electron)
-      ? createClipboardMirror({ logger })
-      : null);
+  // Clipboard mirroring disabled — polling readText() every 500ms causes clipboard
+  // race conditions with Wispr Flow dictation and normal copy-paste on Windows.
+  // All call sites already guard with `if (clipboardMirror && ...)` so null is safe.
+  const clipboardMirror = options.clipboardMirror || null;
   const startRetryIntervalMs =
     Number.isFinite(options.startRetryIntervalMs) && options.startRetryIntervalMs > 0
       ? options.startRetryIntervalMs

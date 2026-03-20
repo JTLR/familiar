@@ -31,6 +31,7 @@ let trayHandlers = null;
 let trayMenuController = null;
 let settingsWindow = null;
 let isQuitting = false;
+let hasCompletedStartup = false;
 let screenStillsController = null;
 let presenceMonitor = null;
 let recordingShutdownInProgress = false;
@@ -520,9 +521,23 @@ app.whenReady().then(() => {
         showSettingsWindow({ focus: false, reason: 'e2e' });
     }
 
+    // Guard against the 'activate' event firing during cold start on Windows.
+    // Without this, the OS triggers 'activate' immediately after login-item launch,
+    // which opens the settings window even though the app should start silently in the tray.
     app.on('activate', () => {
+        if (!hasCompletedStartup) {
+            console.log('Ignoring activate event during startup');
+            return;
+        }
         showSettingsWindow({ reason: 'activate' });
     });
+
+    // Mark startup complete after a short delay so the initial 'activate' event
+    // (fired by the OS on login-item launch) is suppressed.
+    setTimeout(() => {
+        hasCompletedStartup = true;
+        console.log('Startup complete, activate events will now show settings window');
+    }, 2000);
 });
 
 app.on('before-quit', (event) => {

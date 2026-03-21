@@ -629,12 +629,15 @@ function createRecorder(options = {}) {
       return;
     }
 
+    captureInProgress = true;
+
     // Check if session directory was deleted externally (e.g. by Syncthing).
     // If so, finalize the dead session and start a fresh one automatically.
     if (!fs.existsSync(sessionStore.sessionDir)) {
       logger.warn('Session directory missing; recovering with new session', {
         missingDir: sessionStore.sessionDir
       });
+      captureInProgress = false;
       try {
         sessionStore.finalize('directory_missing');
       } catch (_finalizeError) {
@@ -660,8 +663,6 @@ function createRecorder(options = {}) {
       }
       return;
     }
-
-    captureInProgress = true;
     const capturedAt = new Date();
     const nextCapture = sessionStore.nextCaptureFile(capturedAt);
     const filePath = path.join(sessionStore.sessionDir, nextCapture.fileName);
@@ -857,6 +858,7 @@ function createRecorder(options = {}) {
 
       sessionStore = null;
       sourceDetails = null;
+      lastContextFolderPath = null;
       return { ok: true };
     })();
 

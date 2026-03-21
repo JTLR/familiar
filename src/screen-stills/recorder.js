@@ -116,6 +116,7 @@ function createRecorder(options = {}) {
   let stopInProgress = null;
   let sourceDetails = null;
   let queueStore = null;
+  let lastContextFolderPath = null;
 
   function isCaptureAlreadyInProgressError(error) {
     const message = error?.message || '';
@@ -627,6 +628,39 @@ function createRecorder(options = {}) {
       logger.warn('Skipping still capture: previous capture still in progress');
       return;
     }
+
+    // Check if session directory was deleted externally (e.g. by Syncthing).
+    // If so, finalize the dead session and start a fresh one automatically.
+    if (!fs.existsSync(sessionStore.sessionDir)) {
+      logger.warn('Session directory missing; recovering with new session', {
+        missingDir: sessionStore.sessionDir
+      });
+      try {
+        sessionStore.finalize('directory_missing');
+      } catch (_finalizeError) {
+        // Best-effort — directory is already gone
+      }
+      if (queueStore) {
+        queueStore.close();
+        queueStore = null;
+      }
+      sessionStore = null;
+      sourceDetails = null;
+
+      // Auto-recover: start a new session if we have the context folder path
+      if (lastContextFolderPath) {
+        try {
+          await start({ contextFolderPath: lastContextFolderPath, skipPermissionCheck: true });
+          logger.log('Auto-recovered with new recording session');
+        } catch (recoverError) {
+          logger.error('Failed to auto-recover recording session', {
+            error: recoverError?.message || String(recoverError)
+          });
+        }
+      }
+      return;
+    }
+
     captureInProgress = true;
     const capturedAt = new Date();
     const nextCapture = sessionStore.nextCaptureFile(capturedAt);
@@ -706,6 +740,7 @@ function createRecorder(options = {}) {
       if (!contextFolderPath) {
         throw new Error('Context folder path missing for recording.');
       }
+      lastContextFolderPath = contextFolderPath;
       if (!skipPermissionCheck && !isScreenRecordingPermissionGranted()) {
         throw new Error('Screen Recording permission is not granted. Enable Familiar in System Settings \u2192 Privacy & Security \u2192 Screen Recording.');
       }

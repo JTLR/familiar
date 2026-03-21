@@ -46,6 +46,11 @@ function createSessionStore({
   const manifestPath = path.join(sessionDir, 'manifest.json');
 
   function writeManifest() {
+    // Re-create session directory if it was deleted externally (e.g. by Syncthing)
+    if (!fs.existsSync(sessionDir)) {
+      fs.mkdirSync(sessionDir, { recursive: true });
+      logger.warn('Session directory was missing; recreated', { sessionDir });
+    }
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
   }
 
@@ -72,7 +77,15 @@ function createSessionStore({
   function finalize(stopReason) {
     manifest.endedAt = new Date().toISOString();
     manifest.stopReason = stopReason || 'stop';
-    writeManifest();
+    try {
+      writeManifest();
+    } catch (error) {
+      if (error?.code === 'ENOENT') {
+        logger.warn('Session directory gone during finalize; skipping manifest write', { sessionDir, stopReason });
+      } else {
+        throw error;
+      }
+    }
   }
 
   writeManifest();

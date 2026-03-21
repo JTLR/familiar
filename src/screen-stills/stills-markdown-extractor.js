@@ -30,12 +30,17 @@ const normalizeExtractorType = (settings) => {
   if (normalized === 'apple_vision_ocr' || normalized === 'apple-vision-ocr' || normalized === 'apple') {
     return 'apple_vision_ocr'
   }
+  if (normalized === 'windows_ocr' || normalized === 'windows-ocr' || normalized === 'windows') {
+    return 'windows_ocr'
+  }
   if (normalized === 'llm' || normalized === 'cloud' || normalized === 'ai') {
     return 'llm'
   }
 
-  // Default to Apple Vision OCR on macOS; LLM on other platforms where no local OCR is available.
-  return process.platform === 'darwin' ? 'apple_vision_ocr' : 'llm'
+  // Default to native OCR on supported platforms; cloud LLM elsewhere (e.g. Linux).
+  if (process.platform === 'darwin') return 'apple_vision_ocr'
+  if (process.platform === 'win32') return 'windows_ocr'
+  return 'llm'
 }
 
 const createLlmVisionExtractor = ({
